@@ -62,9 +62,10 @@ RUN sed -i 's|http://archive.ubuntu.com/ubuntu/|http://mirror://mirrors.ubuntu.c
 			libllvm20 mesa-vulkan-drivers mesa-libgallium \
 			libgl1-mesa-dri libglx-mesa0 mesa-vdpau-drivers mesa-va-drivers \
 		&& apt-get autoremove --purge -y && \
-		# locales-all carried every locale on earth; the two we use are generated
-		# into a fresh archive instead.
-		locale-gen en_US.UTF-8 ru_RU.UTF-8 && \
+		# locales-all carried every locale on earth; generate the ones actually
+		# used (clients send LC_* over SSH — an ungenerated locale means
+		# setlocale warnings and C fallback for collation).
+		locale-gen en_US.UTF-8 en_GB.UTF-8 ru_RU.UTF-8 && \
 		apt-get remove -y pollinate ubuntu-fan && \
 		# openssh-server generates host keys during package configuration.
 		# Do not bake those per-image private keys into exeuntu.

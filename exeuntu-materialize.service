@@ -11,6 +11,11 @@ WorkingDirectory=/home/exedev
 Environment=HOME=/home/exedev
 Environment=USER=exedev
 Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+# Deterministic pickup: the boot run blocks until reflection answers (or ~5
+# minutes pass), so materialization fires the moment the network is up
+# instead of racing it at OnBootSec. Always exits 0 — unreachability stays a
+# graceful skip for the ExecStart that follows.
+ExecStartPre=/bin/sh -c 'i=0; until curl -fsS --max-time 3 https://reflection.int.exe.xyz/ >/dev/null 2>&1 || [ $i -ge 150 ]; do i=$((i+1)); sleep 2; done; exit 0'
 ExecStart=/usr/local/bin/exeuntu materialize
 # A first converge installs toolchains through mise; give it room instead of
 # letting the default 90s oneshot timeout kill it mid-install.

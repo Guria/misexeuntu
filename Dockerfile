@@ -237,7 +237,10 @@ WORKDIR /home/exedev
 
 # Update PATH in .bashrc to include .local/bin and set XDG_RUNTIME_DIR for systemd user services
 # XDG paths are not autopopulated despite the presense of libpam-systemd. Manually add them here.
-RUN echo 'export PATH="$HOME/.local/bin:$PATH"' >> /home/exedev/.bashrc && \
+# Nothing in the image installs into ~/.local/bin anymore, but both the PATH
+# entry and the dotfiles installer expect the directory to exist.
+RUN mkdir -p /home/exedev/.local/bin && \
+    echo 'export PATH="$HOME/.local/bin:$PATH"' >> /home/exedev/.bashrc && \
     echo 'export XDG_RUNTIME_DIR="/run/user/$(id -u)"' >> /home/exedev/.bashrc && \
     echo 'export XDG_RUNTIME_DIR="/run/user/$(id -u)"' >> /home/exedev/.profile
 

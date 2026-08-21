@@ -2,11 +2,10 @@
 Description=Run exeuntu-materialize periodically
 
 [Timer]
-# Short cadence on purpose: the boot-time run races the network (a skip exits
-# zero by design), so pickup must not depend on catching the window — each
-# later run is a cheap marker check plus one reflection GET.
+# Backstop only: the boot run itself waits for reflection (ExecStartPre), so
+# this just retries the rare longer outage and re-checks daily afterwards.
 OnBootSec=45s
-OnUnitActiveSec=15min
+OnUnitActiveSec=1h
 Persistent=true
 
 [Install]

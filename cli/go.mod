@@ -1,4 +1,4 @@
-module github.com/boldsoftware/exe.dev/exeuntu
+module github.com/guria/misexeuntu
 
 go 1.27.0
 

@@ -11,9 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/boldsoftware/exe.dev/exeuntu/internal/agentupdate"
-	"github.com/boldsoftware/exe.dev/exeuntu/internal/guestllm"
-	"github.com/boldsoftware/exe.dev/exeuntu/internal/piupdate"
+	"github.com/guria/misexeuntu/internal/agentupdate"
+	"github.com/guria/misexeuntu/internal/dotty"
+	"github.com/guria/misexeuntu/internal/guestllm"
+	"github.com/guria/misexeuntu/internal/piupdate"
 	"github.com/urfave/cli/v3"
 )
 
@@ -74,6 +75,7 @@ func newRootCommand(stdout, stderr io.Writer) *cli.Command {
 		ErrWriter:   stderr,
 		Commands: []*cli.Command{
 			configureCommand(),
+			dottyMaterializeCommand(),
 			installCommand(),
 			updateCommand(),
 			versionCommand(),
@@ -176,6 +178,60 @@ func configureClientCommand(commandName, client string) *cli.Command {
 				IntegrationName: cmd.String("integration"),
 			})
 			return err
+		},
+	}
+}
+
+// materialize clones and converges the dotfiles repository discovered via
+// reflection. Unreachable reflection or no matching integration is a normal
+// state on machines outside exe.dev, so it reports and exits zero; only real
+// clone/converge failures fail the command (and mark the boot timer unit
+// failed for a later retry).
+func dottyMaterializeCommand() *cli.Command {
+	return &cli.Command{
+		Name:      "materialize",
+		Usage:     "clone and converge the dotfiles repo discovered via reflection",
+		UsageText: "exeuntu materialize [options]",
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:  "force",
+				Usage: "re-run convergence even when already materialized",
+			},
+			&cli.StringFlag{
+				Name:  "home",
+				Usage: "home directory override",
+			},
+			&cli.StringFlag{
+				Name:  "reflection-url",
+				Usage: "reflection base URL",
+				Value: dotty.DefaultReflectionURL,
+			},
+		},
+		OnUsageError: usageErrorHandler,
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			if err := rejectArgs(cmd); err != nil {
+				return err
+			}
+			ctx, cancel := context.WithTimeout(ctx, 45*time.Minute)
+			defer cancel()
+			res, err := dotty.Materialize(ctx, dotty.Options{
+				ReflectionURL: cmd.String("reflection-url"),
+				HomeDir:       cmd.String("home"),
+				Stdout:        os.Stdout,
+				Force:         cmd.Bool("force"),
+			})
+			if err != nil {
+				return err
+			}
+			line := res.Status
+			if res.RepoURL != "" {
+				line += " " + res.RepoURL
+			}
+			if res.Detail != "" {
+				line += ": " + res.Detail
+			}
+			fmt.Fprintln(os.Stdout, "materialize: "+line)
+			return nil
 		},
 	}
 }

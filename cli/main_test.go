@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/boldsoftware/exe.dev/exeuntu/internal/agentupdate"
-	"github.com/boldsoftware/exe.dev/exeuntu/internal/piupdate"
+	"github.com/guria/misexeuntu/internal/agentupdate"
+	"github.com/guria/misexeuntu/internal/piupdate"
 )
 
 func TestVersionPrintsStampedGitVersion(t *testing.T) {

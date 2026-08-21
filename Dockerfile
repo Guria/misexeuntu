@@ -96,7 +96,6 @@ RUN curl -fsSL https://mise.run | env MISE_INSTALL_PATH=/usr/local/bin/mise sh &
 # Configure systemd
 RUN rm /etc/systemd/system/multi-user.target.wants/console-setup.service \
 		/etc/systemd/system/multi-user.target.wants/ModemManager.service \
-		/etc/systemd/system/multi-user.target.wants/snapd.* \
 		/etc/systemd/system/multi-user.target.wants/unattended-upgrades.* \
 		/etc/systemd/system/multi-user.target.wants/ubuntu-advantage.service && \
 	systemctl mask -- getty.target \
@@ -160,10 +159,8 @@ RUN rm /etc/systemd/system/multi-user.target.wants/console-setup.service \
                    console-getty.service \
 		   atop.service \
                    getty@.service \
-                   snapd.socket \
 		   motd-news.timer motd-news.service \
 		    apport.service apport-autoreport.timer apport-autoreport.path apport-forward.socket \
-		    snapd.snap-repair.timer snapd.snap-repair.service \
 		    udisks2.service \
 		   ufw.service \
 		   lvm2-lvmpolld.socket \

@@ -57,11 +57,13 @@ RUN sed -i 's|http://archive.ubuntu.com/ubuntu/|http://mirror://mirrors.ubuntu.c
 		bubblewrap \
 		dbus-user-session \
 		&& DEBIAN_FRONTEND=noninteractive apt-get purge -y \
-			locales-all snapd debian-keyring \
+			snapd debian-keyring \
 			python3-botocore python-babel-localedata pocketsphinx-en-us \
+			libllvm20 mesa-vulkan-drivers mesa-libgallium \
+			libgl1-mesa-dri libglx-mesa0 mesa-vdpau-drivers mesa-va-drivers \
 		&& apt-get autoremove --purge -y && \
-		# locales-all carries every locale on earth (~230 MB); generate the two
-		# we actually use into a fresh archive instead.
+		# locales-all carried every locale on earth; the two we use are generated
+		# into a fresh archive instead.
 		locale-gen en_US.UTF-8 ru_RU.UTF-8 && \
 		apt-get remove -y pollinate ubuntu-fan && \
 		# openssh-server generates host keys during package configuration.

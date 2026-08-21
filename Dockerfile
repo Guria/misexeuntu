@@ -61,7 +61,6 @@ RUN sed -i 's|http://archive.ubuntu.com/ubuntu/|http://mirror://mirrors.ubuntu.c
 		docker.io docker-buildx docker-compose-v2 \
 		imagemagick ffmpeg \
 		bubblewrap \
-		gh \
 		dbus-user-session \
 		&& apt-get remove -y pollinate ubuntu-fan && \
 		# openssh-server generates host keys during package configuration.
@@ -89,8 +88,12 @@ RUN ARCH=$(dpkg --print-architecture) && \
 
 COPY --from=exeuntu-cli /out/exeuntu /usr/local/bin/exeuntu
 
-# Install uv to /usr/local/bin
-RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
+# mise is the one tool manager the image ships. Coding agents and runtimes
+# (claude, codex, pi, gh, uv, node) are owned by the machine's dotfiles and
+# materialized through it at boot; baking them here would duplicate every one
+# of them once the dotfiles converge.
+RUN curl -fsSL https://mise.run | env MISE_INSTALL_PATH=/usr/local/bin/mise sh && \
+	/usr/local/bin/mise --version
 
 # Configure systemd
 RUN rm /etc/systemd/system/multi-user.target.wants/console-setup.service \
@@ -263,6 +266,16 @@ COPY exe-setup.service /etc/systemd/system/exe-setup.service
 RUN chmod 644 /etc/systemd/system/exe-setup.service && \
     systemctl enable exe-setup.service
 
+# Materialize the machine's dotfiles from the repository discovered through
+# reflection (a github integration whose comment is "dotfiles"): clone
+# keylessly and run its unattended installer. Timer-driven so a long converge
+# never delays boot reachability and a failed run retries on the next tick.
+COPY exeuntu-materialize.service /etc/systemd/system/exeuntu-materialize.service
+COPY exeuntu-materialize.timer /etc/systemd/system/exeuntu-materialize.timer
+RUN chmod 644 /etc/systemd/system/exeuntu-materialize.service \
+		/etc/systemd/system/exeuntu-materialize.timer && \
+	systemctl enable exeuntu-materialize.timer
+
 # TODO(crawshaw/philip): This is called init so that exetini decides
 # this wrapper script is an init, and exec's it rather than forking it.
 # It would be better if you could indicate that via an env variable or something.
@@ -280,27 +293,9 @@ RUN chown exedev:exedev /home/exedev/.config/shelley/AGENTS.md && \
     ln -s /home/exedev/.config/shelley/AGENTS.md /home/exedev/.codex/AGENTS.md && \
     ln -s /home/exedev/.config/shelley/AGENTS.md /home/exedev/.pi/AGENTS.md
 
-# Install Claude and Codex through exeuntu's direct updaters.
-USER root
-RUN exeuntu update claude && \
-    test -x /usr/local/bin/claude && \
-    /usr/local/bin/claude --version
-RUN exeuntu update codex && \
-    test -x /usr/local/bin/codex && \
-    /usr/local/bin/codex --version
-
-# Install pi (pi-coding-agent) through exeuntu's updater.
-ARG PI_VERSION=
-USER exedev
-RUN if [ -n "${PI_VERSION}" ]; then \
-        exeuntu update pi --home /home/exedev --version "${PI_VERSION}"; \
-    else \
-        exeuntu update pi --home /home/exedev; \
-    fi && \
-    test -x /home/exedev/.local/bin/pi && \
-    /home/exedev/.local/bin/pi --version
-USER root
-RUN ln -sf /home/exedev/.local/bin/pi /usr/local/bin/pi
+# Coding agents are not installed here: they arrive through the machine's
+# mise-managed dotfiles (see exeuntu-materialize.timer below). `exeuntu update
+# <agent>` remains available for manual installs.
 
 # Install the pi exe.dev extension (LLM integration + environment context).
 # The bundled public catalog supplies pricing and compatibility metadata only;

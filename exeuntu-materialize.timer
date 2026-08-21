@@ -1,0 +1,12 @@
+[Unit]
+Description=Run exeuntu-materialize periodically
+
+[Timer]
+# Shortly after boot, then daily: the first run materializes the machine,
+# later runs are cheap marker checks that also retry a failed first attempt.
+OnBootSec=45s
+OnUnitActiveSec=1d
+Persistent=true
+
+[Install]
+WantedBy=timers.target

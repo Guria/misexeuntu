@@ -1,4 +1,22 @@
-# exeuntu
+# misexeuntu
+
+misexeuntu is a fork of [exeuntu](http://ghcr.io/boldsoftware/exeuntu), the
+default base image for [exe.dev](https://exe.dev/), for machines whose software
+is owned by a dotfiles installer rather than by the image.
+
+- **mise is the only tool manager.** Coding agents and runtimes (claude, codex,
+  pi, gh, uv, node) are not baked in; the machine's mise-managed dotfiles own
+  them. `exeuntu update <agent>` stays available for manual installs.
+- **Self-materializing.** At boot, `exeuntu materialize` asks the reflection
+  endpoint (`https://reflection.int.exe.xyz/integrations`) for a github-type
+  integration whose comment is `dotfiles`, clones it keylessly into
+  `~/src/<host>/<owner>/<repo>`, and runs its unattended installer
+  (`script/setup`). Unreachable reflection or no matching integration skips
+  cleanly, so the image also works outside exe.dev.
+- A systemd timer re-runs it after boot and daily; converge by hand with
+  `systemctl start exeuntu-materialize.service` or `exeuntu materialize --force`.
+
+---
 
 exeuntu is available at http://ghcr.io/boldsoftware/exeuntu
 

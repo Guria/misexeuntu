@@ -16,8 +16,9 @@ FROM ubuntu:24.04
 SHELL ["/bin/bash", "-euxo", "pipefail", "-c"]
 
 
-# Remove minimization restrictions and install packages with documentation
-# We aim for a usable non-minimal system.
+# Install packages with their documentation. The minimized ubuntu base ships
+# none for its preinstalled packages; we deliberately do not run unminimize —
+# restoring base man pages costs ~90 MB plus minutes of mandb indexing.
 RUN sed -i 's|http://archive.ubuntu.com/ubuntu/|http://mirror://mirrors.ubuntu.com/mirrors.txt|' /etc/apt/sources.list && \
         rm -f /etc/dpkg/dpkg.cfg.d/excludes /etc/dpkg/dpkg.cfg.d/01_nodoc && \
 	apt-get update && \
@@ -34,15 +35,9 @@ RUN sed -i 's|http://archive.ubuntu.com/ubuntu/|http://mirror://mirrors.ubuntu.c
 	echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections && \
 	# Pre-configure pbuilder to avoid mirror prompt
 	echo 'pbuilder pbuilder/mirrorsite string http://archive.ubuntu.com/ubuntu' | debconf-set-selections && \
-	# Run unminimize with single 'y' response to restore documentation
-	echo 'y' | DEBIAN_FRONTEND=noninteractive unminimize && \
-	# Install man-db and reinstall all base packages to get their man pages back
-	DEBIAN_FRONTEND=noninteractive apt-get install -y man-db && \
-	DEBIAN_FRONTEND=noninteractive apt-get install -y --reinstall $(dpkg-query -f '${binary:Package} ' -W) && \
-	mandb -c && \
 	DEBIAN_FRONTEND=noninteractive apt-get install -y \
 		ca-certificates wget ripgrep \
-		locales locales-all \
+		locales \
 		git jq sqlite3 curl vim neovim lsof iproute2 less nginx \
 		make python3-pip python-is-python3 tree net-tools file build-essential \
 		pipx psmisc bsdmainutils sudo socat \
@@ -50,7 +45,6 @@ RUN sed -i 's|http://archive.ubuntu.com/ubuntu/|http://mirror://mirrors.ubuntu.c
 		libcap2-bin unzip util-linux rsync \
 		iputils-ping socat netcat-openbsd \
 		ubuntu-server ubuntu-dev-tools ubuntu-standard \
-		man-db manpages manpages-dev \
 		mitmproxy \
 		systemd systemd-sysv \
 		atop btop iotop ncdu \
@@ -62,7 +56,14 @@ RUN sed -i 's|http://archive.ubuntu.com/ubuntu/|http://mirror://mirrors.ubuntu.c
 		imagemagick ffmpeg \
 		bubblewrap \
 		dbus-user-session \
-		&& apt-get remove -y pollinate ubuntu-fan && \
+		&& DEBIAN_FRONTEND=noninteractive apt-get purge -y \
+			locales-all snapd debian-keyring \
+			python3-botocore python-babel-localedata pocketsphinx-en-us \
+		&& apt-get autoremove --purge -y && \
+		# locales-all carries every locale on earth (~230 MB); generate the two
+		# we actually use into a fresh archive instead.
+		locale-gen en_US.UTF-8 ru_RU.UTF-8 && \
+		apt-get remove -y pollinate ubuntu-fan && \
 		# openssh-server generates host keys during package configuration.
 		# Do not bake those per-image private keys into exeuntu.
 		rm -f /etc/ssh/ssh_host_*_key /etc/ssh/ssh_host_*_key.pub && \
@@ -79,12 +80,9 @@ RUN curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/noble.noarmor.gpg -o /us
     curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/noble.tailscale-keyring.list -o /etc/apt/sources.list.d/tailscale.list && \
     apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y tailscale
 
-# Install latest stable Go from go.dev (the golang-go apt package lags behind)
-RUN ARCH=$(dpkg --print-architecture) && \
-    GO_VERSION=$(curl -fsSL 'https://go.dev/dl/?mode=json' | jq -r '.[0].version') && \
-    curl -fsSL "https://go.dev/dl/${GO_VERSION}.linux-${ARCH}.tar.gz" | tar -xzC /usr/local && \
-    ln -s /usr/local/go/bin/go /usr/local/bin/go && \
-    ln -s /usr/local/go/bin/gofmt /usr/local/bin/gofmt
+# No baked Go toolchain: it cost 282 MB and nothing in the image needs it.
+# When a project needs Go, declare it in the dotfiles mise config and it lands
+# through materialization like every other runtime.
 
 COPY --from=exeuntu-cli /out/exeuntu /usr/local/bin/exeuntu
 

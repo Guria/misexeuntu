@@ -17,7 +17,7 @@ is owned by a dotfiles installer rather than by the image.
   `~/src/<host>/<owner>/<repo>`, and runs its unattended installer
   (`script/setup`). Unreachable reflection or no matching integration skips
   cleanly, so the image also works outside exe.dev.
-- A systemd timer re-runs it after boot and daily; converge by hand with
+- A systemd timer retries every 15 minutes until materialized; converge by hand with
   `systemctl start exeuntu-materialize.service` or `exeuntu materialize --force`.
 
 ---

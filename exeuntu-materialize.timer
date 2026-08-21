@@ -2,10 +2,11 @@
 Description=Run exeuntu-materialize periodically
 
 [Timer]
-# Shortly after boot, then daily: the first run materializes the machine,
-# later runs are cheap marker checks that also retry a failed first attempt.
+# Short cadence on purpose: the boot-time run races the network (a skip exits
+# zero by design), so pickup must not depend on catching the window — each
+# later run is a cheap marker check plus one reflection GET.
 OnBootSec=45s
-OnUnitActiveSec=1d
+OnUnitActiveSec=15min
 Persistent=true
 
 [Install]

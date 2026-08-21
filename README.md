@@ -1,5 +1,9 @@
 # misexeuntu
 
+Published as `ghcr.io/guria/misexeuntu:latest` (built by GitHub Actions on
+every push to `main` and rebuilt weekly without cache; pin a build with the
+commit-sha tag).
+
 misexeuntu is a fork of [exeuntu](http://ghcr.io/boldsoftware/exeuntu), the
 default base image for [exe.dev](https://exe.dev/), for machines whose software
 is owned by a dotfiles installer rather than by the image.

@@ -41,7 +41,7 @@ RUN sed -i 's|http://archive.ubuntu.com/ubuntu/|http://mirror://mirrors.ubuntu.c
 		openssh-server openssh-client \
 		libcap2-bin unzip util-linux rsync \
 		iputils-ping socat netcat-openbsd \
-		ubuntu-server ubuntu-dev-tools ubuntu-standard \
+		ubuntu-server ubuntu-standard \
 		mitmproxy \
 		systemd systemd-sysv \
 		atop btop iotop ncdu \

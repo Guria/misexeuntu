@@ -76,7 +76,7 @@ RUN rm -f /usr/sbin/policy-rc.d
 # No baked browser, docker, build toolchain, media tools or tailscale either
 # (~1 GB combined, all measured unused on real hosts): the dotfiles feature
 # bundles (feat-browser, feat-docker, feat-build, feat-media, feat-tailscale)
-# reinstall them on hosts that opt in; browser defaults on for exe.xyz.
+# reinstall them on hosts that opt in, per host.
 
 COPY --from=exeuntu-cli /out/exeuntu /usr/local/bin/exeuntu
 

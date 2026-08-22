@@ -22,7 +22,8 @@ is owned by a dotfiles installer rather than by the image.
 - **Capabilities live in dotfiles features, not the image.** No baked browser,
   docker, build toolchain, media tools or tailscale (~1 GB combined, measured
   unused on real hosts); the dotfiles repo's `feat-*` bundles reinstall them
-  on hosts that carry the feature (`feat-browser` defaults on for `exe.xyz`).
+  on any host that opts in (per-host line in the features map or
+  `~/.config/dotty/envs`).
 
 ---
 

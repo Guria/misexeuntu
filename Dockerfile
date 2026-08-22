@@ -189,7 +189,8 @@ RUN usermod -l exedev -c "exe.dev user" ubuntu && \
 	groupmod -n exedev ubuntu && \
 	mv /home/ubuntu /home/exedev && \
 	usermod -d /home/exedev exedev && \
-	usermod -aG sudo exedev && \
+	# systemd-journal + adm: read service journals (materialization log) without sudo.
+	usermod -aG sudo,systemd-journal,adm exedev && \
 	sed -i 's/^ubuntu:/exedev:/' /etc/subuid /etc/subgid && \
 	echo 'exedev ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers && \
 	echo 'Defaults:exedev verifypw=any' >> /etc/sudoers && \

@@ -19,6 +19,10 @@ is owned by a dotfiles installer rather than by the image.
   cleanly, so the image also works outside exe.dev.
 - At boot the unit waits for reflection to answer (up to ~5 minutes) and materializes the moment the network is up; an hourly timer is only a backstop. Converge by hand with
   `systemctl start exeuntu-materialize.service` or `exeuntu materialize --force`.
+- **Capabilities live in dotfiles features, not the image.** No baked browser,
+  docker, build toolchain, media tools or tailscale (~1 GB combined, measured
+  unused on real hosts); the dotfiles repo's `feat-*` bundles reinstall them
+  on hosts that carry the feature (`feat-browser` defaults on for `exe.xyz`).
 
 ---
 

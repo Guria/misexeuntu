@@ -1,6 +1,3 @@
-# Stage 1: Get Chrome/Chromium from chromedp/headless-shell
-FROM docker.io/chromedp/headless-shell:stable AS chrome
-
 # Build the guest-facing exeuntu helper.
 FROM docker.io/library/golang:1.27.0 AS exeuntu-cli
 ARG EXEUNTU_GIT_VERSION=unknown
@@ -39,7 +36,7 @@ RUN sed -i 's|http://archive.ubuntu.com/ubuntu/|http://mirror://mirrors.ubuntu.c
 		ca-certificates wget ripgrep \
 		locales \
 		git jq sqlite3 curl vim neovim lsof iproute2 less nginx \
-		make python3-pip python-is-python3 tree net-tools file build-essential \
+		make python3-pip python-is-python3 tree net-tools file \
 		pipx psmisc bsdmainutils sudo socat \
 		openssh-server openssh-client \
 		libcap2-bin unzip util-linux rsync \
@@ -49,11 +46,6 @@ RUN sed -i 's|http://archive.ubuntu.com/ubuntu/|http://mirror://mirrors.ubuntu.c
 		systemd systemd-sysv \
 		atop btop iotop ncdu \
 		git \
-		libglib2.0-0 libnss3 libx11-6 libxcomposite1 libxdamage1 \
-		libxext6 libxi6 libxrandr2 libgbm1 libgtk-3-0 \
-		fonts-noto-color-emoji fonts-symbola \
-		docker.io docker-buildx docker-compose-v2 \
-		imagemagick ffmpeg \
 		bubblewrap \
 		dbus-user-session \
 		&& DEBIAN_FRONTEND=noninteractive apt-get purge -y \
@@ -71,21 +63,20 @@ RUN sed -i 's|http://archive.ubuntu.com/ubuntu/|http://mirror://mirrors.ubuntu.c
 		# Do not bake those per-image private keys into exeuntu.
 		rm -f /etc/ssh/ssh_host_*_key /etc/ssh/ssh_host_*_key.pub && \
 		# Allow non-root users to use ping without sudo by granting CAP_NET_RAW
-		setcap cap_net_raw=+ep /usr/bin/ping && \
-	fc-cache -f -v && \
-	# Remove policy-rc.d so services can start normally (the base image includes this
-	# to prevent services from starting during build, but we run systemd at runtime)
-	rm -f /usr/sbin/policy-rc.d
+		setcap cap_net_raw=+ep /usr/bin/ping
 
-# Install Tailscale (keyring method, per https://tailscale.com/install.sh)
-# This must run after ca-certificates and curl are installed.
-RUN curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/noble.noarmor.gpg -o /usr/share/keyrings/tailscale-archive-keyring.gpg && \
-    curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/noble.tailscale-keyring.list -o /etc/apt/sources.list.d/tailscale.list && \
-    apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y tailscale
+# Remove policy-rc.d so services can start normally (the base image includes this
+# to prevent services from starting during build, but we run systemd at runtime)
+RUN rm -f /usr/sbin/policy-rc.d
 
 # No baked Go toolchain: it cost 282 MB and nothing in the image needs it.
 # When a project needs Go, declare it in the dotfiles mise config and it lands
 # through materialization like every other runtime.
+#
+# No baked browser, docker, build toolchain, media tools or tailscale either
+# (~1 GB combined, all measured unused on real hosts): the dotfiles feature
+# bundles (feat-browser, feat-docker, feat-build, feat-media, feat-tailscale)
+# reinstall them on hosts that opt in; browser defaults on for exe.xyz.
 
 COPY --from=exeuntu-cli /out/exeuntu /usr/local/bin/exeuntu
 
@@ -157,7 +148,7 @@ RUN rm /etc/systemd/system/multi-user.target.wants/console-setup.service \
 		apt-daily.timer \
 		plymouth-log.service && \
 	# systemd-logind is disabled but not masked. It's involved in populating the XDG runtime dir sockets... somehow
-	systemctl disable docker.service containerd.service getty.target systemd-logind.service tailscaled.service \
+	systemctl disable getty.target systemd-logind.service \
 		nginx.service \
                    console-getty.service \
 		   atop.service \
@@ -199,7 +190,6 @@ RUN usermod -l exedev -c "exe.dev user" ubuntu && \
 	mv /home/ubuntu /home/exedev && \
 	usermod -d /home/exedev exedev && \
 	usermod -aG sudo exedev && \
-	usermod -aG docker exedev && \
 	sed -i 's/^ubuntu:/exedev:/' /etc/subuid /etc/subgid && \
 	echo 'exedev ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers && \
 	echo 'Defaults:exedev verifypw=any' >> /etc/sudoers && \
@@ -222,9 +212,9 @@ ENV EXEUNTU=1
 # STOPSIGNAL SIGRTMIN+3
 
 
-# Copy the self-contained Chrome bundle from chromedp/headless-shell
-COPY --from=chrome /headless-shell /headless-shell
-ENV PATH="/usr/local/bin:/headless-shell:${PATH}"
+# No baked headless-shell: the dotfiles feat-browser bundle pulls the same
+# chromedp artifact (crane export) on hosts that carry the feature, and
+# symlinks /usr/local/bin/headless-shell.
 
 RUN mkdir -p /home/exedev /home/exedev/.config/shelley && \
     chown exedev:exedev /home/exedev /home/exedev/.config /home/exedev/.config/shelley

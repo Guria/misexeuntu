@@ -266,7 +266,7 @@ COPY exeuntu-materialize.service /etc/systemd/system/exeuntu-materialize.service
 COPY exeuntu-materialize.timer /etc/systemd/system/exeuntu-materialize.timer
 RUN chmod 644 /etc/systemd/system/exeuntu-materialize.service \
 		/etc/systemd/system/exeuntu-materialize.timer && \
-	systemctl enable exeuntu-materialize.timer
+	systemctl enable exeuntu-materialize.service exeuntu-materialize.timer
 
 # TODO(crawshaw/philip): This is called init so that exetini decides
 # this wrapper script is an init, and exec's it rather than forking it.

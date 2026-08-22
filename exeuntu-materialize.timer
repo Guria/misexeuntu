@@ -2,9 +2,12 @@
 Description=Run exeuntu-materialize periodically
 
 [Timer]
-# Backstop only: the boot run itself waits for reflection (ExecStartPre), so
-# this just retries the rare longer outage and re-checks daily afterwards.
+# Backstop only: the boot run (WantedBy=multi-user.target on the service)
+# waits for reflection in ExecStartPre, so this just retries the rare longer
+# outage and re-checks hourly afterwards. AccuracySec=1s keeps retries from
+# sliding inside the default 1-minute coalescing window.
 OnBootSec=45s
+AccuracySec=1s
 OnUnitActiveSec=1h
 Persistent=true
 

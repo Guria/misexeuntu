@@ -23,3 +23,9 @@ TimeoutStartSec=45min
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=exeuntu-materialize
+
+[Install]
+# Start at boot, not via the timer: a timer's default AccuracySec coalesces
+# wakeups into a 1-minute window, which delayed first convergence by ~1 min
+# on an 0.8s boot. ExecStartPre already blocks until reflection answers.
+WantedBy=multi-user.target

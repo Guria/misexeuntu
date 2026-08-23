@@ -273,21 +273,43 @@ RUN chmod 644 /etc/systemd/system/exeuntu-materialize.service \
 # It would be better if you could indicate that via an env variable or something.
 COPY init-wrapper.sh /usr/local/bin/init
 
-# Create config directories for LLM agents
-RUN mkdir -p /home/exedev/.claude /home/exedev/.codex /home/exedev/.pi && \
-    chown -R exedev:exedev /home/exedev/.claude /home/exedev/.codex /home/exedev/.pi
+# Create config directories for LLM agents. The OpenCode plugin has no
+# dependencies; pre-creating node_modules avoids a first-run SDK install.
+RUN mkdir -p \
+      /home/exedev/.claude \
+      /home/exedev/.codex \
+      /home/exedev/.pi \
+      /home/exedev/.config/opencode/plugins \
+      /home/exedev/.config/opencode/node_modules && \
+    chown -R exedev:exedev /home/exedev/.claude /home/exedev/.codex /home/exedev/.pi /home/exedev/.config/opencode
 
-# Copy LLM agent instructions to Claude, Codex, and Shelley config directories
-# Shelley uses ~/.config/shelley/ (XDG convention, directory already created above)
+# Disable OpenCode's own updater; exeuntu owns the system binary.
+COPY opencode.json /home/exedev/.config/opencode/opencode.json
+# Dynamically register models from attached exe.dev LLM integrations.
+COPY opencode-plugin/exe-dev.js /home/exedev/.config/opencode/plugins/exe-dev.js
+# OpenCode otherwise installs its plugin SDK on first start even though this
+# dependency-free plugin does not import it. A minimal lock avoids that fetch.
+COPY opencode-plugin/runtime-dependencies.json /home/exedev/.config/opencode/package.json
+COPY opencode-plugin/runtime-lock.json /home/exedev/.config/opencode/package-lock.json
+RUN chown exedev:exedev \
+      /home/exedev/.config/opencode/opencode.json \
+      /home/exedev/.config/opencode/package.json \
+      /home/exedev/.config/opencode/package-lock.json \
+      /home/exedev/.config/opencode/plugins/exe-dev.js
+
+# Copy LLM agent instructions to Claude, Codex, OpenCode, Pi, and Shelley config directories
+# Shelley and OpenCode use ~/.config/ (XDG convention).
 COPY AGENTS.md /home/exedev/.config/shelley/AGENTS.md
 RUN chown exedev:exedev /home/exedev/.config/shelley/AGENTS.md && \
     ln -s /home/exedev/.config/shelley/AGENTS.md /home/exedev/.claude/CLAUDE.md && \
     ln -s /home/exedev/.config/shelley/AGENTS.md /home/exedev/.codex/AGENTS.md && \
+    ln -s /home/exedev/.config/shelley/AGENTS.md /home/exedev/.config/opencode/AGENTS.md && \
     ln -s /home/exedev/.config/shelley/AGENTS.md /home/exedev/.pi/AGENTS.md
 
-# Coding agents are not installed here: they arrive through the machine's
-# mise-managed dotfiles (see exeuntu-materialize.timer below). `exeuntu update
-# <agent>` remains available for manual installs.
+# Coding agents (claude, codex, opencode, pi) are not installed here: they
+# arrive through the machine's mise-managed dotfiles (see
+# exeuntu-materialize.timer below). `exeuntu update <agent>` remains available
+# for manual installs.
 
 # Install the pi exe.dev extension (LLM integration + environment context).
 # The bundled public catalog supplies pricing and compatibility metadata only;

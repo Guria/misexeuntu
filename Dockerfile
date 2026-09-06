@@ -299,7 +299,10 @@ RUN chown exedev:exedev \
 
 # Copy LLM agent instructions to Claude, Codex, OpenCode, Pi, and Shelley config directories
 # Shelley and OpenCode use ~/.config/ (XDG convention).
-COPY AGENTS.md /home/exedev/.config/shelley/AGENTS.md
+# Source file is exeuntu-agents.md at the repo root: a name agents don't
+# auto-discover, so host-side sessions working on this repo never load VM-only
+# instructions by mistake.
+COPY exeuntu-agents.md /home/exedev/.config/shelley/AGENTS.md
 RUN chown exedev:exedev /home/exedev/.config/shelley/AGENTS.md && \
     ln -s /home/exedev/.config/shelley/AGENTS.md /home/exedev/.claude/CLAUDE.md && \
     ln -s /home/exedev/.config/shelley/AGENTS.md /home/exedev/.codex/AGENTS.md && \

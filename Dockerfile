@@ -78,6 +78,12 @@ RUN rm -f /usr/sbin/policy-rc.d
 # bundles (feat-browser, feat-docker, feat-build, feat-media, feat-tailscale)
 # reinstall them on hosts that opt in, per host.
 
+# exe-init manages DNS directly and nothing in the lean image needs
+# systemd-resolved. Purging it also removes the resolvconf shim that makes
+# Tailscale misdetect its own DNS setup as openresolv
+# (tailscale/tailscale#19062).
+RUN apt-get purge -y systemd-resolved
+
 COPY --from=exeuntu-cli /out/exeuntu /usr/local/bin/exeuntu
 
 # mise is the one tool manager the image ships. Coding agents and runtimes
@@ -109,7 +115,6 @@ RUN rm /etc/systemd/system/multi-user.target.wants/console-setup.service \
 		etc-hosts.mount \
 		etc-hostname.mount \
 		-.mount \
-		systemd-resolved.service \
 		systemd-remount-fs.service \
 		systemd-sysusers.service \
 		systemd-update-done.service \

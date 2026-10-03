@@ -59,6 +59,9 @@ RUN sed -i 's|http://archive.ubuntu.com/ubuntu/|http://mirror://mirrors.ubuntu.c
 		# setlocale warnings and C fallback for collation).
 		locale-gen en_US.UTF-8 en_GB.UTF-8 ru_RU.UTF-8 && \
 		apt-get remove -y pollinate ubuntu-fan && \
+		# Same-layer cleanup: package indexes and cached debs are dead weight
+		# once the layer is committed.
+		apt-get clean && rm -rf /var/lib/apt/lists/* \
 		# openssh-server generates host keys during package configuration.
 		# Do not bake those per-image private keys into exeuntu.
 		rm -f /etc/ssh/ssh_host_*_key /etc/ssh/ssh_host_*_key.pub && \
@@ -92,14 +95,9 @@ COPY --from=exeuntu-cli /out/exeuntu /usr/local/bin/exeuntu
 RUN curl -fsSL https://mise.run | env MISE_INSTALL_PATH=/usr/local/bin/mise sh && \
 	/usr/local/bin/mise --version
 
-# Install the DuckDB CLI (a single static binary).
-ARG DUCKDB_VERSION=1.5.5
-RUN ARCH=$(dpkg --print-architecture) && \
-    curl -fsSL "https://install.duckdb.org/v${DUCKDB_VERSION}/duckdb_cli-linux-${ARCH}.zip" -o /tmp/duckdb.zip && \
-    unzip -o /tmp/duckdb.zip -d /usr/local/bin duckdb && \
-    rm /tmp/duckdb.zip && \
-    chmod 0755 /usr/local/bin/duckdb && \
-    duckdb --version
+# No baked DuckDB either: upstream installs the CLI plus httpfs/iceberg/avro
+# extensions for its look integration, but per the tenet above the tool belongs
+# to the dotfiles owner (a feat-* bundle on hosts that need it), not the image.
 
 # Configure systemd
 RUN rm /etc/systemd/system/multi-user.target.wants/console-setup.service \
@@ -248,14 +246,6 @@ RUN mkdir -p /home/exedev/.local/bin && \
 
 # Configure git to use 'main' as default branch name
 RUN git config --global init.defaultBranch main
-
-# Pre-install the DuckDB extensions the look integration's usage text needs
-# (httpfs for s3://, iceberg for iceberg_scan; iceberg loads avro itself) into
-# ~/.duckdb/extensions, so the first query works without a runtime download.
-# Extensions are per-user and per-DuckDB-version, so this must run as exedev
-# after the CLI.
-RUN duckdb -c "INSTALL httpfs; INSTALL iceberg; INSTALL avro;" && \
-    duckdb -c "SET autoinstall_known_extensions=false; LOAD httpfs; LOAD iceberg; LOAD avro;"
 
 # Switch back to root to install systemd service
 USER root

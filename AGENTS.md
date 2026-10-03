@@ -55,6 +55,8 @@ git commit --no-edit
 | `pi-extension/` | Heavy fork divergence | Bias toward ours; upstream's features may assume their fat image |
 | `opencode-plugin/` | Shared | Accept upstream improvements |
 | New baked package / agent install | Upstream adds, we removed | `-s ours` for the merge, or resolve to skip the hunk |
+
+**"New baked package" means any software installed into the image, no exceptions.** This includes static binaries (DuckDB, fd), CLI tools, and "just for an exe.dev integration" installs like upstream's DuckDB-for-look (Sep 2025). Do not rationalize a keep because the tool serves a baked-in service or integration — if the image can build and boot without the binary, it does not belong in the image. The only exceptions are packages the boot path itself needs (systemd, ssh, mise, the exeuntu CLI). If an integration genuinely requires a tool on every host, that is a dotfiles problem: raise it with the user, never merge it in unilaterally. When in doubt about a merge hunk that installs something, skip it and say so in the merge commit message.
 | Test fixes | Clean | Accept — tests are shared |
 | Systemd services | Case-by-case | We have diverged services (materialize, shelley) |
 

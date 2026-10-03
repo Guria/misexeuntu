@@ -78,6 +78,11 @@ RUN rm -f /usr/sbin/policy-rc.d
 # bundles (feat-browser, feat-docker, feat-build, feat-media, feat-tailscale)
 # reinstall them on hosts that opt in, per host.
 
+# Nothing in the image uses systemd-resolved; purging the base-image default
+# keeps the lean footprint (upstream purges it to fix Tailscale DNS detection,
+# which does not apply here since Tailscale arrives via dotfiles).
+RUN apt-get purge -y systemd-resolved
+
 COPY --from=exeuntu-cli /out/exeuntu /usr/local/bin/exeuntu
 
 # mise is the one tool manager the image ships. Coding agents and runtimes
@@ -86,6 +91,15 @@ COPY --from=exeuntu-cli /out/exeuntu /usr/local/bin/exeuntu
 # of them once the dotfiles converge.
 RUN curl -fsSL https://mise.run | env MISE_INSTALL_PATH=/usr/local/bin/mise sh && \
 	/usr/local/bin/mise --version
+
+# Install the DuckDB CLI (a single static binary).
+ARG DUCKDB_VERSION=1.5.5
+RUN ARCH=$(dpkg --print-architecture) && \
+    curl -fsSL "https://install.duckdb.org/v${DUCKDB_VERSION}/duckdb_cli-linux-${ARCH}.zip" -o /tmp/duckdb.zip && \
+    unzip -o /tmp/duckdb.zip -d /usr/local/bin duckdb && \
+    rm /tmp/duckdb.zip && \
+    chmod 0755 /usr/local/bin/duckdb && \
+    duckdb --version
 
 # Configure systemd
 RUN rm /etc/systemd/system/multi-user.target.wants/console-setup.service \
@@ -109,7 +123,6 @@ RUN rm /etc/systemd/system/multi-user.target.wants/console-setup.service \
 		etc-hosts.mount \
 		etc-hostname.mount \
 		-.mount \
-		systemd-resolved.service \
 		systemd-remount-fs.service \
 		systemd-sysusers.service \
 		systemd-update-done.service \
@@ -235,6 +248,14 @@ RUN mkdir -p /home/exedev/.local/bin && \
 
 # Configure git to use 'main' as default branch name
 RUN git config --global init.defaultBranch main
+
+# Pre-install the DuckDB extensions the look integration's usage text needs
+# (httpfs for s3://, iceberg for iceberg_scan; iceberg loads avro itself) into
+# ~/.duckdb/extensions, so the first query works without a runtime download.
+# Extensions are per-user and per-DuckDB-version, so this must run as exedev
+# after the CLI.
+RUN duckdb -c "INSTALL httpfs; INSTALL iceberg; INSTALL avro;" && \
+    duckdb -c "SET autoinstall_known_extensions=false; LOAD httpfs; LOAD iceberg; LOAD avro;"
 
 # Switch back to root to install systemd service
 USER root

@@ -1,0 +1,9 @@
+# pnpm 11 and later read only registry and auth settings from .npmrc.
+ignoreScripts: true
+frozenLockfile: true
+# Don't install packages published less than 7 days ago (in minutes), to keep
+# compromised or malicious new releases out.
+minimumReleaseAge: 10080
+# Keep packageManager metadata out of the lockfile's first YAML document,
+# which is the only document GitHub's dependency graph reads.
+pmOnFail: ignore

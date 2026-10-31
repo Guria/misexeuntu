@@ -613,6 +613,51 @@ test("forwards the authoritative thinking-level map onto aliased gpt-6 models", 
   assert.deepEqual(sol.thinkingLevelMap, solMap);
 });
 
+test("leaves the default thinking range when no usable map is supplied", () => {
+  for (const thinkingLevelMap of [undefined, null, false, 7, "high", {}, []]) {
+    const infos = providerInfosFromIntegrationCatalogs(
+      [{
+        name: "llm",
+        baseURL: "https://llm.int.exe.xyz",
+        catalog: { schema_version: 1, models: [gpt6IntegrationModel("gpt-6-sol", "GPT-6 Sol")] },
+      }],
+      gpt6PricingCatalog([{
+        id: "gpt-6-sol",
+        reasoning: true,
+        thinkingLevelMap,
+        cost: { input: 2, output: 10, cacheRead: 0.2, cacheWrite: 2.5 },
+      }]),
+      (message) => assert.fail(`unexpected warning: ${message}`),
+    );
+    const model = infos.get("exe-dev-openai")?.config.models?.[0];
+    assert.ok(model);
+    assert.equal(model.reasoning, true);
+    assert.equal(Object.hasOwn(model, "thinkingLevelMap"), false);
+  }
+});
+
+test("keeps each integration's thinking map when native model IDs repeat", () => {
+  const thinkingLevelMap = { off: null, high: "high", max: "max" };
+  const infos = providerInfosFromIntegrationCatalogs(
+    ["personal", "team"].map((name) => ({
+      name,
+      baseURL: `https://${name}.int.exe.xyz`,
+      catalog: { schema_version: 1, models: [gpt6IntegrationModel("gpt-6-sol", "GPT-6 Sol")] },
+    })),
+    gpt6PricingCatalog([{
+      id: "gpt-6-sol",
+      reasoning: true,
+      thinkingLevelMap,
+      cost: { input: 2, output: 10, cacheRead: 0.2, cacheWrite: 2.5 },
+    }]),
+    (message) => assert.fail(`unexpected warning: ${message}`),
+  );
+  const models = infos.get("exe-dev-openai")?.config.models;
+  assert.ok(models);
+  assert.deepEqual(models.map((model) => model.id), ["gpt-6-sol@personal", "gpt-6-sol@team"]);
+  for (const model of models) assert.deepEqual(model.thinkingLevelMap, thinkingLevelMap);
+});
+
 test("sanitizes stray thinking-level keys and non-string values", () => {
   const consoleWarnings: string[] = [];
   const originalWarn = console.warn;

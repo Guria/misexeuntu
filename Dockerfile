@@ -1,5 +1,5 @@
 # Build the guest-facing exeuntu helper.
-FROM docker.io/library/golang:1.27.1 AS exeuntu-cli
+FROM docker.io/library/golang:1.27.3 AS exeuntu-cli
 ARG EXEUNTU_GIT_VERSION=unknown
 WORKDIR /src/exeuntu-cli
 COPY cli/ ./
@@ -61,7 +61,7 @@ RUN sed -i 's|http://archive.ubuntu.com/ubuntu/|http://mirror://mirrors.ubuntu.c
 		apt-get remove -y pollinate ubuntu-fan && \
 		# Same-layer cleanup: package indexes and cached debs are dead weight
 		# once the layer is committed.
-		apt-get clean && rm -rf /var/lib/apt/lists/* \
+		apt-get clean && rm -rf /var/lib/apt/lists/* && \
 		# openssh-server generates host keys during package configuration.
 		# Do not bake those per-image private keys into exeuntu.
 		rm -f /etc/ssh/ssh_host_*_key /etc/ssh/ssh_host_*_key.pub && \
@@ -261,6 +261,7 @@ RUN cat /tmp/motd-snippet.bash >> /home/exedev/.bashrc && rm /tmp/motd-snippet.b
 # The shelley binary itself is installed at vm creation.
 COPY shelley.socket /etc/systemd/system/shelley.socket
 COPY shelley.service /etc/systemd/system/shelley.service
+COPY tmpfiles-shelley.conf /etc/tmpfiles.d/shelley.conf
 RUN chmod 644 /etc/systemd/system/shelley.socket /etc/systemd/system/shelley.service && \
     systemctl enable shelley.socket
 
@@ -284,29 +285,19 @@ RUN chmod 644 /etc/systemd/system/exeuntu-materialize.service \
 # It would be better if you could indicate that via an env variable or something.
 COPY init-wrapper.sh /usr/local/bin/init
 
-# Create config directories for LLM agents. The OpenCode plugin has no
-# dependencies; pre-creating node_modules avoids a first-run SDK install.
+# Create config directories for LLM agents.
 RUN mkdir -p \
       /home/exedev/.claude \
       /home/exedev/.codex \
       /home/exedev/.pi \
-      /home/exedev/.config/opencode/plugins \
-      /home/exedev/.config/opencode/node_modules && \
+      /home/exedev/.config/opencode && \
     chown -R exedev:exedev /home/exedev/.claude /home/exedev/.codex /home/exedev/.pi /home/exedev/.config/opencode
 
-# Disable OpenCode's own updater; exeuntu owns the system binary.
-COPY opencode.json /home/exedev/.config/opencode/opencode.json
-# Dynamically register models from attached exe.dev LLM integrations.
-COPY opencode-plugin/exe-dev.js /home/exedev/.config/opencode/plugins/exe-dev.js
-# OpenCode otherwise installs its plugin SDK on first start even though this
-# dependency-free plugin does not import it. A minimal lock avoids that fetch.
-COPY opencode-plugin/runtime-dependencies.json /home/exedev/.config/opencode/package.json
-COPY opencode-plugin/runtime-lock.json /home/exedev/.config/opencode/package-lock.json
-RUN chown exedev:exedev \
-      /home/exedev/.config/opencode/opencode.json \
-      /home/exedev/.config/opencode/package.json \
-      /home/exedev/.config/opencode/package-lock.json \
-      /home/exedev/.config/opencode/plugins/exe-dev.js
+# mise owns the OpenCode binary. Ship its exe.dev integration in the system
+# config directory so it is available without running the manual installer.
+COPY cli/internal/agentupdate/opencode-plugin/opencode.json /etc/opencode/opencode.json
+COPY cli/internal/agentupdate/opencode-plugin/exe-dev.js /etc/opencode/plugins/exe-dev.js
+RUN chmod 644 /etc/opencode/opencode.json /etc/opencode/plugins/exe-dev.js
 
 # Copy LLM agent instructions to Claude, Codex, OpenCode, Pi, and Shelley config directories
 # Shelley and OpenCode use ~/.config/ (XDG convention).
